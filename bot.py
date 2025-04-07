@@ -1,35 +1,15 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
 import time
 import random
-import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-import requests
+import os
 
-# === Configuration du BOT Telegram ===
-telegram_token = '7738170805:AAEl-eE9FOw9KnWl9AMF1SjprSVCRB8-L7E'
-chat_id = '6395554104'
+# === Paramètres Telegram (via variables d'environnement)
+telegram_token = os.getenv("TELEGRAM_TOKEN")
+chat_id = os.getenv("CHAT_ID")
 
-# === Configuration Selenium ===
-options = Options()
-options.add_argument("--start-maximized")
-options.add_experimental_option("excludeSwitches", ["enable-automation"])
-options.add_experimental_option('useAutomationExtension', False)
-options.add_argument("--disable-blink-features")
-options.add_argument("--disable-blink-features=AutomationControlled")
-
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-# Anti-détection
-driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-    "source": """
-    Object.defineProperty(navigator, 'webdriver', {get: () => undefined})
-    """
-})
-
-# === Fonction pour envoyer message sur Telegram ===
+# === Fonction pour envoyer un message Telegram
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
     payload = {
@@ -38,62 +18,63 @@ def send_telegram_message(text):
     }
     requests.post(url, data=payload)
 
-# === Fonction pour scroller humainement ===
-def human_scroll():
-    for _ in range(3):
-        driver.execute_script("window.scrollBy(0, window.innerHeight);")
-        time.sleep(random.uniform(1, 2))
+# === Fonction pour scraper LinkedIn sans Selenium
+def scrape_linkedin():
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
+    }
 
-# === Fonction principale de scraping et d'envoi ===
-def scrape_and_notify():
-    known_offers = set()  # Pour éviter les doublons
-    
-    base_url = "https://www.linkedin.com/jobs/search/?keywords=stage"
-    
-    while True:
+    url = "https://www.linkedin.com/jobs/search?keywords=stage&location=France"
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        print(f"Erreur HTTP {response.status_code}")
+        return []
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    jobs = []
+    job_cards = soup.select('ul.jobs-search__results-list li')  # Adapté pour la page LinkedIn Jobs
+
+    for card in job_cards:
         try:
-            print("🔎 Ouverture de LinkedIn...")
-            driver.get(base_url)
-            time.sleep(random.uniform(3, 5))
-            human_scroll()
+            title = card.select_one('h3').get_text(strip=True)
+            company = card.select_one('h4').get_text(strip=True)
+            location = card.select_one('span.job-search-card__location').get_text(strip=True)
+            link = card.select_one('a').get('href')
 
-            offers = driver.find_elements(By.CSS_SELECTOR, "ul.jobs-search__results-list li")
-
-            print(f"✅ Nombre d'offres trouvées : {len(offers)}")
-            new_stages = 0
-
-            for offer in offers:
-                try:
-                    title_element = offer.find_element(By.CSS_SELECTOR, "h3")
-                    company_element = offer.find_element(By.CSS_SELECTOR, "h4")
-                    location_element = offer.find_element(By.CSS_SELECTOR, "div>div>div>div>span")
-                    link_element = offer.find_element(By.TAG_NAME, "a")
-
-                    title = title_element.text.strip()
-                    company = company_element.text.strip()
-                    location = location_element.text.strip()
-                    link = link_element.get_attribute('href')
-
-                    unique_key = title + company + location  # Identifiant unique pour une offre
-
-                    if unique_key not in known_offers:
-                        known_offers.add(unique_key)
-                        new_stages += 1
-                        message = f"🚀 *Nouveau Stage Trouvé !*\n\n👔 Poste : {title}\n🏢 Entreprise : {company}\n📍 Lieu : {location}\n🔗 Lien : {link}"
-                        send_telegram_message(message)
-                        print(f"🔔 Stage envoyé sur Telegram : {title}")
-
-                except Exception as e:
-                    print(f"⚠️ Erreur dans l'extraction d'une offre : {e}")
-
-            print(f"🎯 {new_stages} nouvelles offres envoyées cette session.")
-
+            jobs.append({
+                'title': title,
+                'company': company,
+                'location': location,
+                'link': link
+            })
         except Exception as e:
-            print(f"❌ Erreur principale : {e}")
+            print(f"Erreur lors de l'analyse d'une carte: {e}")
+            continue
 
-        print("🕒 Pause de 10 minutes avant prochaine recherche...")
-        time.sleep(600)  # 10 minutes
-        
+    return jobs
 
-# === Lancement du script ===
-scrape_and_notify()
+# === Fonction principale
+def main_loop():
+    print("🚀 Bot LinkedIn Stage démarré...")
+    known_jobs = set()
+
+    while True:
+        jobs = scrape_linkedin()
+
+        for job in jobs:
+            unique_id = f"{job['title']}-{job['company']}-{job['location']}"
+
+            if unique_id not in known_jobs:
+                known_jobs.add(unique_id)
+                message = f"🚀 *Nouveau Stage trouvé !*\n\n👔 Poste : {job['title']}\n🏢 Entreprise : {job['company']}\n📍 Lieu : {job['location']}\n🔗 Lien : {job['link']}"
+                send_telegram_message(message)
+                print(f"✅ Nouveau stage envoyé : {job['title']} chez {job['company']}")
+
+        print("⏳ En attente avant prochaine recherche...")
+        time.sleep(random.randint(500, 700))  # Attendre environ 10 minutes
+
+# === Démarrer le bot
+if __name__ == "__main__":
+    main_loop()
