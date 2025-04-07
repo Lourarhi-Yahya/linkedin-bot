@@ -9,6 +9,28 @@ import os
 telegram_token = os.getenv("TELEGRAM_TOKEN")
 chat_id = os.getenv("CHAT_ID")
 
+def send_telegram_message(text):
+    url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': text,
+        'parse_mode': 'Markdown'  # Attention au format Markdown
+    }
+    response = requests.post(url, data=payload)
+
+    # Debug complet
+    print(f"📬 Tentative d'envoi Telegram")
+    print(f"➡️ URL: {url}")
+    print(f"➡️ Data envoyée: {payload}")
+    print(f"➡️ Status Code: {response.status_code}")
+    print(f"➡️ Response: {response.text}")
+
+    if response.status_code != 200:
+        print("❌ Erreur d'envoi sur Telegram, message rejeté.")
+
+    else:
+        print("✅ Message envoyé avec succès sur Telegram.")
+
 # === Fonction pour envoyer un message Telegram
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
