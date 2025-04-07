@@ -24,13 +24,13 @@ KEYWORDS = [
     "marketing analyst", "e-commerce", "achats", "pmo"
 ]
 
-# === Mois en français et anglais pour reconnaissance dans le texte
+# === Mois pour détection intelligente ===
 MONTHS_PATTERN = (
     "janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|"
     "january|february|march|april|may|june|july|august|september|october|november|december"
 )
 
-# === Fonction pour envoyer un message Telegram ===
+# === Fonction d'envoi Telegram ===
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
     payload = {
@@ -41,46 +41,60 @@ def send_telegram_message(text):
     response = requests.post(url, data=payload)
     print(f"Status : {response.status_code} | Réponse : {response.text}")
 
-# === Fonction pour vérifier si un titre est pertinent
+# === Fonction pour vérifier la pertinence du titre ===
 def is_relevant(title):
     title_lower = title.lower()
     return any(keyword in title_lower for keyword in KEYWORDS)
 
-# === Fonction pour aller chercher la description du stage et détecter la date
-def get_start_date_from_description(link):
+# === Fonction pour extraire date et lien entreprise depuis une offre ===
+def get_start_date_and_company_link(linkedin_link):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
     }
     try:
-        response = requests.get(link, headers=headers)
+        response = requests.get(linkedin_link, headers=headers)
         if response.status_code != 200:
-            return "Non spécifiée"
+            return "Non spécifiée", linkedin_link
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        description = soup.get_text(separator=' ')
-        description = description.lower()
+        description = soup.get_text(separator=' ').lower()
 
-        # Regex pour capter "début janvier 2025", "start: September 2025", etc.
+        # --- Recherche date début ---
         match = re.search(r"(début|start|entrée en fonction|démarrage).{0,15}(" + MONTHS_PATTERN + r")\s*(\d{4})?", description)
-        
         if match:
             mois = match.group(2).capitalize()
             annee = match.group(3) if match.group(3) else ""
-            return f"{mois} {annee}".strip()
-        
-        # Sinon, chercher directement un mois et une année dans tout le texte
-        match_alt = re.search(r"(" + MONTHS_PATTERN + r")\s*(\d{4})", description)
-        if match_alt:
-            mois = match_alt.group(1).capitalize()
-            annee = match_alt.group(2)
-            return f"{mois} {annee}"
+            start_date = f"{mois} {annee}".strip()
+        else:
+            match_alt = re.search(r"(" + MONTHS_PATTERN + r")\s*(\d{4})", description)
+            if match_alt:
+                mois = match_alt.group(1).capitalize()
+                annee = match_alt.group(2)
+                start_date = f"{mois} {annee}"
+            else:
+                start_date = "Non spécifiée"
+
+        # --- Recherche lien entreprise ---
+        apply_link = None
+        # 1. Chercher un bouton "Postuler" externe
+        for a_tag in soup.find_all('a', href=True):
+            href = a_tag['href']
+            if 'apply' in href or 'careers' in href:
+                if not href.startswith('/'):
+                    apply_link = href
+                    break
+
+        # 2. Si pas trouvé, rester sur LinkedIn
+        if not apply_link:
+            apply_link = linkedin_link
+
+        return start_date, apply_link
 
     except Exception as e:
-        print(f"Erreur lors de l'accès à la description : {e}")
+        print(f"Erreur accès page offre : {e}")
+        return "Non spécifiée", linkedin_link
 
-    return "Non spécifiée"
-
-# === Fonction pour scraper les offres LinkedIn ===
+# === Fonction pour scraper LinkedIn ===
 def scrape_linkedin_jobs():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
@@ -115,24 +129,26 @@ def scrape_linkedin_jobs():
 
             if "paris" in location.lower() and is_relevant(title):
                 full_link = f"https://www.linkedin.com{link}" if link.startswith("/") else link
-                start_date = get_start_date_from_description(full_link)
+                start_date, company_link = get_start_date_and_company_link(full_link)
+
                 jobs.append({
                     'title': title,
                     'company': company,
                     'location': location,
-                    'link': full_link,
-                    'start_date': start_date
+                    'linkedin_link': full_link,
+                    'start_date': start_date,
+                    'company_link': company_link
                 })
-                time.sleep(random.uniform(1, 2))  # Pause entre les requêtes (anti-ban)
+                time.sleep(random.uniform(1, 2))  # Anti-spam LinkedIn
 
         except Exception as e:
-            print(f"⚠️ Erreur carte offre : {e}")
+            print(f"⚠️ Erreur analyse offre : {e}")
 
     return jobs
 
-# === Fonction principale avec boucle infinie
+# === Fonction principale ===
 def main():
-    print("🚀 Bot LinkedIn INTELLIGENT lancé...")
+    print("🚀 Bot LinkedIn SUPER PRO démarré...")
 
     known_jobs = set()
 
@@ -140,9 +156,9 @@ def main():
         jobs = scrape_linkedin_jobs()
 
         if not jobs:
-            print("❌ Aucun stage pertinent trouvé.")
+            print("❌ Aucun stage trouvé.")
         else:
-            print(f"✅ {len(jobs)} stages pertinents trouvés. Envoi en cours...")
+            print(f"✅ {len(jobs)} stages pertinents trouvés.")
 
         for job in jobs:
             unique_id = f"{job['title']}-{job['company']}-{job['location']}"
@@ -155,14 +171,15 @@ def main():
                     f"🏢 Entreprise : {job['company']}\n"
                     f"📍 Lieu : {job['location']}\n"
                     f"🗓️ Début estimé : {job['start_date']}\n"
-                    f"🔗 [Voir l'offre ici]({job['link']})"
+                    f"🔗 [Lien LinkedIn]({job['linkedin_link']})\n"
+                    f"🌐 [Lien Entreprise]({job['company_link']})"
                 )
                 send_telegram_message(message)
-                time.sleep(random.uniform(1.5, 3.5))
+                time.sleep(random.uniform(1.5, 3.5))  # Petite pause
 
-        print("⏳ Pause de 5 minutes avant prochaine recherche...")
+        print("⏳ Attente 5 minutes avant la prochaine recherche...")
         time.sleep(300)
 
-# === Lancer le bot
+# === Lancer ===
 if __name__ == "__main__":
     main()
