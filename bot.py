@@ -46,7 +46,7 @@ def is_relevant(title):
     title_lower = title.lower()
     return any(keyword in title_lower for keyword in KEYWORDS)
 
-# === Fonction pour extraire date et lien entreprise depuis une offre ===
+# === Fonction pour extraire date de début et lien entreprise ===
 def get_start_date_and_company_link(linkedin_link):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
@@ -59,7 +59,7 @@ def get_start_date_and_company_link(linkedin_link):
         soup = BeautifulSoup(response.text, 'html.parser')
         description = soup.get_text(separator=' ').lower()
 
-        # --- Recherche date début ---
+        # Recherche intelligente date
         match = re.search(r"(début|start|entrée en fonction|démarrage).{0,15}(" + MONTHS_PATTERN + r")\s*(\d{4})?", description)
         if match:
             mois = match.group(2).capitalize()
@@ -74,9 +74,8 @@ def get_start_date_and_company_link(linkedin_link):
             else:
                 start_date = "Non spécifiée"
 
-        # --- Recherche lien entreprise ---
+        # Recherche lien entreprise
         apply_link = None
-        # 1. Chercher un bouton "Postuler" externe
         for a_tag in soup.find_all('a', href=True):
             href = a_tag['href']
             if 'apply' in href or 'careers' in href:
@@ -84,7 +83,6 @@ def get_start_date_and_company_link(linkedin_link):
                     apply_link = href
                     break
 
-        # 2. Si pas trouvé, rester sur LinkedIn
         if not apply_link:
             apply_link = linkedin_link
 
@@ -94,12 +92,12 @@ def get_start_date_and_company_link(linkedin_link):
         print(f"Erreur accès page offre : {e}")
         return "Non spécifiée", linkedin_link
 
-# === Fonction pour scraper LinkedIn ===
+# === Fonction pour scraper LinkedIn uniquement les offres publiées aujourd'hui ===
 def scrape_linkedin_jobs():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
     }
-    url = "https://www.linkedin.com/jobs/search/?keywords=stage&location=Paris%2C%20Île-de-France%2C%20France&f_TPR=r604800"
+    url = "https://www.linkedin.com/jobs/search/?keywords=stage&location=Paris%2C%20Île-de-France%2C%20France&f_TPR=r86400"
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -139,7 +137,7 @@ def scrape_linkedin_jobs():
                     'start_date': start_date,
                     'company_link': company_link
                 })
-                time.sleep(random.uniform(1, 2))  # Anti-spam LinkedIn
+                time.sleep(random.uniform(1, 2))
 
         except Exception as e:
             print(f"⚠️ Erreur analyse offre : {e}")
@@ -148,7 +146,7 @@ def scrape_linkedin_jobs():
 
 # === Fonction principale ===
 def main():
-    print("🚀 Bot LinkedIn SUPER PRO démarré...")
+    print("🚀 Bot LinkedIn TEMPS RÉEL lancé...")
 
     known_jobs = set()
 
@@ -156,9 +154,9 @@ def main():
         jobs = scrape_linkedin_jobs()
 
         if not jobs:
-            print("❌ Aucun stage trouvé.")
+            print("❌ Aucun nouveau stage trouvé.")
         else:
-            print(f"✅ {len(jobs)} stages pertinents trouvés.")
+            print(f"✅ {len(jobs)} stages trouvés aujourd'hui.")
 
         for job in jobs:
             unique_id = f"{job['title']}-{job['company']}-{job['location']}"
@@ -175,10 +173,10 @@ def main():
                     f"🌐 [Lien Entreprise]({job['company_link']})"
                 )
                 send_telegram_message(message)
-                time.sleep(random.uniform(1.5, 3.5))  # Petite pause
+                time.sleep(random.uniform(1.5, 3.5))
 
-        print("⏳ Attente 5 minutes avant la prochaine recherche...")
-        time.sleep(300)
+        print("⏳ Attente 1 minute avant la prochaine vérification...")
+        time.sleep(60)  # Attendre 1 minute seulement !
 
 # === Lancer ===
 if __name__ == "__main__":
