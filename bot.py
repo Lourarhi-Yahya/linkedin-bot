@@ -5,9 +5,9 @@ import time
 import random
 import os
 
-# === Paramètres Telegram
-telegram_token = os.getenv("TELEGRAM_TOKEN")
-chat_id = os.getenv("CHAT_ID")
+telegram_token = '7738170805:AAEl-eE9FOw9KnWl9AMF1SjprSVCRB8-L7E'
+chat_id = '6395554104'
+
 
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
