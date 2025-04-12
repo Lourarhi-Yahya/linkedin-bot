@@ -8,7 +8,7 @@ import re
 telegram_token = '7738170805:AAEl-eE9FOw9KnWl9AMF1SjprSVCRB8-L7E'
 chat_id = '6395554104'
 
-# === Liste des mots-clés métiers ===
+# === Liste des mots-clés maximisée ===
 KEYWORDS = [
     "data", "data analyst", "data scientist", "big data", "data engineer",
     "machine learning", "deep learning", "intelligence artificielle",
@@ -39,7 +39,7 @@ def send_telegram_message(text):
         'parse_mode': 'Markdown'
     }
     response = requests.post(url, data=payload)
-    print(f"📤 Message envoyé. Status : {response.status_code}")
+    print(f"Status : {response.status_code} | Réponse : {response.text}")
 
 # === Fonction pour vérifier la pertinence du titre ===
 def is_relevant(title):
@@ -59,7 +59,7 @@ def get_start_date_and_company_link(linkedin_link):
         soup = BeautifulSoup(response.text, 'html.parser')
         description = soup.get_text(separator=' ').lower()
 
-        # Recherche de la date
+        # Recherche intelligente date
         match = re.search(r"(début|start|entrée en fonction|démarrage).{0,15}(" + MONTHS_PATTERN + r")\s*(\d{4})?", description)
         if match:
             mois = match.group(2).capitalize()
@@ -72,13 +72,9 @@ def get_start_date_and_company_link(linkedin_link):
                 annee = match_alt.group(2)
                 start_date = f"{mois} {annee}"
             else:
-                # Chercher ASAP ou "dès que possible"
-                if any(term in description for term in ["asap", "dès que possible", "immédiatement", "soon"]):
-                    start_date = "ASAP"
-                else:
-                    start_date = "Non spécifiée"
+                start_date = "Non spécifiée"
 
-        # Lien vers l'entreprise
+        # Recherche lien entreprise
         apply_link = None
         for a_tag in soup.find_all('a', href=True):
             href = a_tag['href']
@@ -93,15 +89,15 @@ def get_start_date_and_company_link(linkedin_link):
         return start_date, apply_link
 
     except Exception as e:
-        print(f"⚠️ Erreur accès page offre : {e}")
+        print(f"Erreur accès page offre : {e}")
         return "Non spécifiée", linkedin_link
 
-# === Fonction pour scraper LinkedIn (offres publiées récemment) ===
+# === Fonction pour scraper LinkedIn uniquement les offres publiées aujourd'hui ===
 def scrape_linkedin_jobs():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
     }
-    url = "https://www.linkedin.com/jobs/search/?keywords=stage&location=Paris%2C%20Île-de-France%2C%20France&f_TPR=r2592000"  # 30 derniers jours
+    url = "https://www.linkedin.com/jobs/search/?keywords=stage&location=Paris%2C%20Île-de-France%2C%20France&f_TPR=r86400"
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -160,41 +156,27 @@ def main():
         if not jobs:
             print("❌ Aucun nouveau stage trouvé.")
         else:
-            print(f"✅ {len(jobs)} stages trouvés dans les 30 derniers jours.")
+            print(f"✅ {len(jobs)} stages trouvés aujourd'hui.")
 
         for job in jobs:
             unique_id = f"{job['title']}-{job['company']}-{job['location']}"
 
             if unique_id not in known_jobs:
-                start_date_lower = job['start_date'].lower()
-
-                # --- FILTRE : Avril OU ASAP ---
-                if (
-                    "avril" in start_date_lower
-                    or "april" in start_date_lower
-                    or "asap" in start_date_lower
-                    or "dès que possible" in start_date_lower
-                    or "immédiatement" in start_date_lower
-                    or "soon" in start_date_lower
-                ):
-                    known_jobs.add(unique_id)
-
-                    message = (
-                        f"🚀 *Stage détecté (Avril ou ASAP) !*\n\n"
-                        f"👔 Poste : {job['title']}\n"
-                        f"🏢 Entreprise : {job['company']}\n"
-                        f"📍 Lieu : {job['location']}\n"
-                        f"🗓️ Début estimé : {job['start_date']}\n"
-                        f"🔗 [Lien LinkedIn]({job['linkedin_link']})\n"
-                        f"🌐 [Lien Entreprise]({job['company_link']})"
-                    )
-                    send_telegram_message(message)
-                    time.sleep(random.uniform(1.5, 3.5))
-                else:
-                    print(f"❌ Stage ignoré (pas Avril/ASAP) : {job['title']} chez {job['company']}")
+                known_jobs.add(unique_id)
+                message = (
+                    f"🚀 *Stage détecté !*\n\n"
+                    f"👔 Poste : {job['title']}\n"
+                    f"🏢 Entreprise : {job['company']}\n"
+                    f"📍 Lieu : {job['location']}\n"
+                    f"🗓️ Début estimé : {job['start_date']}\n"
+                    f"🔗 [Lien LinkedIn]({job['linkedin_link']})\n"
+                    f"🌐 [Lien Entreprise]({job['company_link']})"
+                )
+                send_telegram_message(message)
+                time.sleep(random.uniform(1.5, 3.5))
 
         print("⏳ Attente 1 minute avant la prochaine vérification...")
-        time.sleep(60)
+        time.sleep(60)  # Attendre 1 minute seulement !
 
 # === Lancer ===
 if __name__ == "__main__":
