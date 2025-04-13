@@ -13,10 +13,10 @@ KEYWORDS = [
     "data", "data analyst", "data scientist", "big data", "data engineer",
     "machine learning", "deep learning", "intelligence artificielle",
     "artificial intelligence", "python", "sql", "bi", "business intelligence",
-    "power bi", "tableau", "finance", "financial analyst", "contrôle de gestion",
-    "contrôleur de gestion", "risk", "audit", "auditeur", "business analyst",
+    "power bi", "tableau", "finance", "financial analyst",
+    , "risk", "audit", "auditeur", "business analyst",
     "analyste", "conseil", "consultant", "consulting", "stratégie", "strategy",
-    "investment", "banque", "private equity", "venture capital", "management",
+    "investment", "banque", "private equity", "management",
     "gestion de projet", "project management", "operations", "product manager",
     "product owner", "project owner", "transformation digitale", "innovation",
     "rpa", "robotic process automation", "supply chain", "logistique",
@@ -55,7 +55,7 @@ def get_start_date_and_company_link(linkedin_link):
         response = requests.get(linkedin_link, headers=headers)
         if response.status_code != 200:
             return "Non spécifiée", linkedin_link
-        
+
         soup = BeautifulSoup(response.text, 'html.parser')
         description = soup.get_text(separator=' ').lower()
 
@@ -97,7 +97,7 @@ def scrape_linkedin_jobs():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
     }
-    url = "https://www.linkedin.com/jobs/search/?keywords=stage&location=Paris%2C%20Île-de-France%2C%20France&f_TPR=r86400"
+    url = "https://www.linkedin.com/jobs/search/?keywords=stage&location=Paris%2C%20%C3%8Ele-de-France%2C%20France&f_TPR=r86400"
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -164,13 +164,13 @@ def main():
             if unique_id not in known_jobs:
                 known_jobs.add(unique_id)
                 message = (
-                    f"🚀 *Stage détecté !*\n\n"
-                    f"👔 Poste : {job['title']}\n"
-                    f"🏢 Entreprise : {job['company']}\n"
-                    f"📍 Lieu : {job['location']}\n"
-                    f"🗓️ Début estimé : {job['start_date']}\n"
-                    f"🔗 [Lien LinkedIn]({job['linkedin_link']})\n"
-                    f"🌐 [Lien Entreprise]({job['company_link']})"
+                    "🚀 *Stage Data/Consulting !*\n\n"
+    f"👔 *Poste* : {job['title']}\n"
+    f"🏢 *Entreprise* : {job['company']}\n"
+    f"📍 *Lieu* : {job['location']}\n"
+    f"🗓️ *Début estimé* : {job['start_date']}\n\n"
+    f"🔗 [Voir l'offre sur LinkedIn]({job['linkedin_link']})\n"
+    f"🌐 [Voir le site de l'entreprise]({job['company_link']})"
                 )
                 send_telegram_message(message)
                 time.sleep(random.uniform(1.5, 3.5))
