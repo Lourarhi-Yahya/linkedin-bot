@@ -10,18 +10,16 @@ chat_id = '6395554104'
 
 # === Liste des mots-clés maximisée ===
 KEYWORDS = [
-   "data", "data analyst", "data scientist", "big data", "data engineer",
-    "machine learning", "deep learning", "intelligence artificielle",
-    "artificial intelligence", "python", "sql", "bi", "business intelligence",
-    "power bi", "tableau", "finance", "financial analyst", "contrôle de gestion",
-    "contrôleur de gestion", "risk", "audit", "auditeur", "business analyst",
-    "analyste", "conseil", "consultant", "consulting", "stratégie", "strategy",
-    "investment", "banque", "private equity", "venture capital", "management",
-    "gestion de projet", "project management", "operations", "product manager",
-    "product owner", "project owner", "transformation digitale", "innovation",
-    "rpa", "robotic process automation", "supply chain", "logistique",
-    "analyse de données", "business development", "business dev",
-    "marketing analyst", "e-commerce", "achats", "pmo"
+    # Français
+    "données", "analyste de données", "scientifique de données", "big data", "ingénieur données",
+    "apprentissage automatique", "apprentissage profond", "intelligence artificielle",
+    "python", "sql", "intelligence d'affaires", "power bi", "tableau", "analyse de données",
+    "analyste métier", "business analyst",
+    
+    # Anglais
+    "data", "data analyst", "data scientist", "big data", "data engineer",
+    "machine learning", "deep learning", "artificial intelligence",
+    "business intelligence", "power bi", "tableau", "business analyst"
 ]
 
 # === Mois pour détection intelligente ===
@@ -164,14 +162,15 @@ def main():
             if unique_id not in known_jobs:
                 known_jobs.add(unique_id)
                 message = (
-                    "🚀 *Stage Data/Consulting !*\n\n"
+    f"🚀 *{job['title']}*\n\n"
     f"👔 *Poste* : {job['title']}\n"
     f"🏢 *Entreprise* : {job['company']}\n"
     f"📍 *Lieu* : {job['location']}\n"
     f"🗓️ *Début estimé* : {job['start_date']}\n\n"
     f"🔗 [Voir l'offre sur LinkedIn]({job['linkedin_link']})\n"
     f"🌐 [Voir le site de l'entreprise]({job['company_link']})"
-                )
+)
+
                 send_telegram_message(message)
                 time.sleep(random.uniform(1.5, 3.5))
 
