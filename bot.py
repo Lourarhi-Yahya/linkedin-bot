@@ -10,13 +10,13 @@ chat_id = '6395554104'
 
 # === Liste des mots-clés maximisée ===
 KEYWORDS = [
-    "data", "data analyst", "data scientist", "big data", "data engineer",
+   "data", "data analyst", "data scientist", "big data", "data engineer",
     "machine learning", "deep learning", "intelligence artificielle",
     "artificial intelligence", "python", "sql", "bi", "business intelligence",
-    "power bi", "tableau", "finance", "financial analyst",
-    , "risk", "audit", "auditeur", "business analyst",
+    "power bi", "tableau", "finance", "financial analyst", "contrôle de gestion",
+    "contrôleur de gestion", "risk", "audit", "auditeur", "business analyst",
     "analyste", "conseil", "consultant", "consulting", "stratégie", "strategy",
-    "investment", "banque", "private equity", "management",
+    "investment", "banque", "private equity", "venture capital", "management",
     "gestion de projet", "project management", "operations", "product manager",
     "product owner", "project owner", "transformation digitale", "innovation",
     "rpa", "robotic process automation", "supply chain", "logistique",
